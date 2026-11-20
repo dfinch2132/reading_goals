@@ -33,6 +33,7 @@ b{color:var(--fg)}
 #probe{position:fixed;left:0;top:0;width:1px;visibility:hidden;pointer-events:none;padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom)}
 </style></head><body>
 <div id="probe"></div>
+<pre id="dbg" style="position:fixed;left:6px;top:62px;z-index:99999;margin:0;padding:6px 8px;border-radius:8px;background:rgba(0,0,0,.78);color:#fff;font:11px/1.35 ui-monospace,Menlo,monospace;pointer-events:none;white-space:pre"></pre>
 
 <form class="screen" id="pin" hidden><div class="box">
   <h1>Reading Log</h1><p>Enter your PIN. You only need to do this once on this phone.</p>
@@ -131,6 +132,7 @@ b{color:var(--fg)}
     if (!/(^|\.)(googleusercontent|google)\.com$/.test(host)) return;
     var d = e.data;
     if (!d || typeof d !== 'object') return;
+    dState.msgs++; if (d.type === 'readinglog-clip') dState.clip = d.c; if (d.type === 'readinglog-size') dState.size = d.h;
     if (d.type === 'readinglog-pin') {
       put(KEY, '');
       showPin(PIN_TEXT[d.code] || '');
@@ -149,6 +151,17 @@ b{color:var(--fg)}
       }
     }
   });
+
+  // ---- temporary debug readout (remove once the layout is right) ----
+  var dState = { clip: 'none', size: 'none', msgs: 0, build: 'v3' };
+  function dbg() {
+    $('dbg').textContent = ['build ' + dState.build, 'standalone ' + standalone,
+      'inner ' + innerWidth + 'x' + innerHeight, 'screen ' + screen.width + 'x' + screen.height,
+      'frame h ' + frame.offsetHeight + ' reserved ' + reserved,
+      'insets ' + inset('Top') + '/' + inset('Bottom'),
+      'app clip ' + dState.clip, 'app inner h ' + dState.size, 'msgs ' + dState.msgs].join('\n');
+  }
+  setInterval(dbg, 700);
 
   var saved = get(KEY);
   if (saved) start(saved); else showPin('');
