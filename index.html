@@ -134,6 +134,10 @@ b{color:var(--fg)}
     if (d.type === 'readinglog-pin') {
       put(KEY, '');
       showPin(PIN_TEXT[d.code] || '');
+    } else if (d.type === 'readinglog-clip' && standalone && innerHeight >= innerWidth) {
+      // The app reports how much of its bottom edge is hidden. Grow the frame by that much so Google's strip falls off the screen.
+      var c = Math.round(+d.c) || 0;
+      if (c > 3 && c <= 120 && c > reserved) { reserved = c; put(RKEY, String(reserved)); fit(); }
     } else if (d.type === 'readinglog-size' && standalone && innerHeight >= innerWidth && frame.offsetHeight) {
       // Google's page leaves an empty strip (about 49px) under the app. If the app reports less height than
       // the iframe has (minus what we already reserved), reserve the difference so the tab bar reaches the bottom.
