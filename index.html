@@ -33,7 +33,8 @@ b{color:var(--fg)}
 #probe{position:fixed;left:0;top:0;width:1px;visibility:hidden;pointer-events:none;padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom)}
 </style></head><body>
 <div id="probe"></div>
-<pre id="dbg" style="position:fixed;left:6px;top:62px;z-index:99999;margin:0;padding:6px 8px;border-radius:8px;background:rgba(0,0,0,.78);color:#fff;font:11px/1.35 ui-monospace,Menlo,monospace;pointer-events:none;white-space:pre"></pre>
+<div id="m1" style="position:fixed;left:0;right:0;height:6px;background:#f0f;z-index:99998;pointer-events:none"></div><div id="m2" style="position:fixed;left:0;right:0;bottom:0;height:6px;background:#0cf;z-index:99998;pointer-events:none"></div>
+<pre id="dbg" style="position:fixed;left:6px;top:62px;z-index:99999;margin:0;padding:6px 8px;border-radius:8px;background:rgba(0,0,0,.78);color:#fff;font:11px/1.35 ui-monospace,Menlo,monospace;white-space:pre"></pre>
 
 <form class="screen" id="pin" hidden><div class="box">
   <h1>Reading Log</h1><p>Enter your PIN. You only need to do this once on this phone.</p>
@@ -61,7 +62,7 @@ b{color:var(--fg)}
   var APP_URL = 'https://script.google.com/macros/s/AKfycbzQtS20ldw4hWJYF2Yh5Z2Vg3gvSDTtOfnBc0lquDuZh13pRfQybeqrRmeaW1UZv-U4/exec';
   // ========================================================================================
 
-  var KEY = 'readinglog-pin', RKEY = 'readinglog-reserved';
+  var KEY = 'readinglog-pin', RKEY = 'readinglog-reserved-v4';
   var $ = function (id) { return document.getElementById(id); };
   var frame = $('app');
   var standalone = navigator.standalone === true || (window.matchMedia && matchMedia('(display-mode: standalone)').matches);
@@ -82,7 +83,7 @@ b{color:var(--fg)}
   }
 
   // ---- fit the iframe to the full screen, plus whatever Google's page leaves empty at the bottom ----
-  var reserved = Math.max(0, Math.min(120, parseInt(get(RKEY), 10) || 0));
+  var reserved = 0; put(RKEY, '');
   function fit() {
     var portrait = innerHeight >= innerWidth;
     if (standalone && portrait) {
@@ -136,31 +137,37 @@ b{color:var(--fg)}
     if (d.type === 'readinglog-pin') {
       put(KEY, '');
       showPin(PIN_TEXT[d.code] || '');
-    } else if (d.type === 'readinglog-clip' && standalone && innerHeight >= innerWidth) {
-      // The app reports how much of its bottom edge is hidden. Grow the frame by that much so Google's strip falls off the screen.
-      var c = Math.round(+d.c) || 0;
-      if (c > 3 && c <= 120 && c > reserved) { reserved = c; put(RKEY, String(reserved)); fit(); }
     } else if (d.type === 'readinglog-size' && standalone && innerHeight >= innerWidth && frame.offsetHeight) {
       // Google's page leaves an empty strip (about 49px) under the app. If the app reports less height than
       // the iframe has (minus what we already reserved), reserve the difference so the tab bar reaches the bottom.
       var shortfall = (frame.offsetHeight - reserved) - d.h;
       if (shortfall > 3 && shortfall <= 80) {
         reserved = Math.min(120, reserved + shortfall);
-        put(RKEY, String(reserved));
+        
         fit();
       }
     }
   });
 
   // ---- temporary debug readout (remove once the layout is right) ----
-  var dState = { clip: 'none', size: 'none', msgs: 0, build: 'v3' };
+  var dState = { clip: 'none', size: 'none', msgs: 0, build: 'v4', mode: 0 };
   function dbg() {
     $('dbg').textContent = ['build ' + dState.build, 'standalone ' + standalone,
       'inner ' + innerWidth + 'x' + innerHeight, 'screen ' + screen.width + 'x' + screen.height,
       'frame h ' + frame.offsetHeight + ' reserved ' + reserved,
       'insets ' + inset('Top') + '/' + inset('Bottom'),
-      'app clip ' + dState.clip, 'app inner h ' + dState.size, 'msgs ' + dState.msgs].join('\n');
+      'app clip ' + dState.clip, 'mode ' + dState.mode + ' (tap box)', 'app inner h ' + dState.size, 'msgs ' + dState.msgs].join('\n');
   }
+  // ---- layout experiments: tap the black box to cycle ----
+  $('m1').style.top = (screen.height - 6) + 'px';
+  function applyMode() {
+    var h = document.documentElement, b = document.body, m = dState.mode;
+    if (m === 0) { h.style.overflow = ''; h.style.height = ''; b.style.overflow = ''; b.style.height = ''; frame.style.position = 'fixed'; }
+    else if (m === 1) { h.style.overflow = 'visible'; b.style.overflow = 'visible'; h.style.height = 'auto'; b.style.height = 'auto'; frame.style.position = 'fixed'; }
+    else { h.style.overflow = 'visible'; b.style.overflow = 'visible'; h.style.height = screen.height + 'px'; b.style.height = screen.height + 'px'; frame.style.position = 'absolute'; }
+    fit(); dbg();
+  }
+  $('dbg').addEventListener('click', function () { dState.mode = (dState.mode + 1) % 3; applyMode(); });
   setInterval(dbg, 700);
 
   var saved = get(KEY);
